@@ -136,7 +136,7 @@ async def main():
                 clicked = 1
                 initial_x = mouse_position[0]
                 if enable_sounds and status != 'playing': sounds['bumped'].play()
-            if event.type == pg.MOUSEBUTTONUP:
+            if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 50:
                 if mouse_position[0] - initial_x > 50:
                     lane_target = min(1, lane_target+1)
                 elif mouse_position[0] - initial_x < 50:
@@ -394,7 +394,7 @@ def load_sounds():
     if PLATFORM == 'android':
         volume = 0.5
     for i in range(11):
-        sounds['engine'].append(pg.mixer.Sound(PATH+'sounds/Car_Engine_Loop'+str(i)+'.ogg'))
+        sounds['engine'].append(pg.mixer.Sound(PATH+'sounds/engine'+str(i)+'.ogg'))
         sounds['engine'][-1].set_volume(volume)
     for i in range(4):
         sounds['powerup'].append(pg.mixer.Sound(PATH+'sounds/powerup'+str(i)+'.ogg'))
