@@ -15,7 +15,7 @@ async def main():
     pg.mixer.init()    
     size = (360, 640)
     if PLATFORM == 'android':# or PLATFORM == 'windows':
-        screen = pg.display.set_mode(size, pg.SCALED|pg.FULLSCREEN)
+        screen = pg.display.set_mode(size, pg.SCALED) # |pg.FULLSCREEN)
     else:
         screen = pg.display.set_mode(size)
 
@@ -126,7 +126,7 @@ async def main():
         clicked = 0
         mouse_position = pg.mouse.get_pos()
 
-        delta_time = min(200, clock.tick(60))
+        delta_time = min(50, clock.tick(60))
         total_time += delta_time
         animation_time += speed*delta_time*10
         fps = 1000/delta_time
@@ -136,6 +136,9 @@ async def main():
                 clicked = 1
                 initial_x = mouse_position[0]
                 if enable_sounds and status != 'playing': sounds['bumped'].play()
+            # if event.type == pg.FINGERMOTION:
+            #     print( 'what')
+            #     pass
             if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 50:
                 if mouse_position[0] - initial_x > 50:
                     lane_target = min(1, lane_target+1)
@@ -161,10 +164,10 @@ async def main():
             screen.blit(tree_resized, tree_position)
             tree[1] -= delta_time*speed*10
         
-        if tree_position[0] + new_size[0] < 0 or tree_position[0] > size[0]:
+        if tree_position[0] + new_size[0] < 0 or tree_position[0] > size[0] or tree[1] < -7:
             trees.remove(tree)
 
-        if (fps > 55 and trees[0][1] < 170) or len(trees) < 5:
+        if (fps > 55 and trees[0][1] < 100) or len(trees) < 5:
             add_tree(trees, tree_sprites)
 
         if status == 'start':
@@ -211,7 +214,7 @@ async def main():
                 status = 'pause'
                 sounds['engine'][streak].fadeout(100)
             else:
-                screen.blit(small_font.render(str(int(fps)), 1, pg.Color('black')), (335, 5))
+                # screen.blit(small_font.render(str(int(fps)), 1, pg.Color('black')), (335, 5))
                 screen.blit(pause_button, pause_button_rect)
                 screen.blit(sound_button[enable_sounds], sound_button_rect)
                 screen.blit(music_button[enable_music], music_button_rect)
@@ -250,7 +253,7 @@ async def main():
                 speed = speed + delta_time*1e-6
             elements_to_remove = []     
             for element in lane_elements: # lane, distance, type
-                scale = abs(1/element[1])
+                scale = min(1, abs(1/element[1]))
                 new_size = (100*scale, 100*scale)
                 if element[2] < 5:
                     resized = pg.transform.scale(elements[element[2]][int((total_time*0.01))%8], new_size)
@@ -263,7 +266,7 @@ async def main():
                     element_collider = pg.mask.from_surface(resized)
                     car_collider = pg.mask.from_surface(car[int(car_x+1.5)])
 
-                    if  element_position[1] > size[1]:
+                    if  element_position[1] > size[1] or element[1] < 1:
                         elements_to_remove.append(element)
                     
                     elif car_collider.overlap(element_collider, (element_position[0] - car_position[0], element_position[1] - car_position[1])):
@@ -344,7 +347,7 @@ async def main():
             pg.time.wait(30)
             if  max_animations == 0:
                 status = 'start'
-                    
+
         for animation in animations:
             anim_frame = animation[0]
             last_size = animation[0].get_size()
@@ -359,7 +362,7 @@ async def main():
             animation[1] += random.randint(-1,1)
             animation[2] -= delta_time*.1 + random.randint(-1,1)
             screen.blit(anim_frame, (animation[1], animation[2]))
-            if total_time - animation[3] > 500:
+            if total_time - animation[3] > 500 or (fps < 30 and total_time - animation[3] > 0):
                 animations.remove(animation)
         
         screen.blit(points_sprite, points_rect)
