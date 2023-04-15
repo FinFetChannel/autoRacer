@@ -14,8 +14,8 @@ elif __import__("sys").platform == "emscripten":
 async def main():
     pg.mixer.init()    
     size = (360, 640)
-    if PLATFORM == 'android':# or PLATFORM == 'windows':
-        screen = pg.display.set_mode(size, pg.SCALED) # |pg.FULLSCREEN)
+    if PLATFORM == 'android':
+        screen = pg.display.set_mode(size, pg.SCALED)#|pg.RESIZABLE)
     else:
         screen = pg.display.set_mode(size)
 
@@ -48,9 +48,9 @@ async def main():
     black_frame.fill(pg.Color('black'))
     black_frame.set_alpha(50)
 
-    font = pg.font.SysFont('arial bold', 100)
-    small_font = pg.font.SysFont('arial bold', 30)
-    medium_font = pg.font.SysFont('arial bold', 50)
+    font = pg.font.SysFont(None, 100)
+    medium_font = pg.font.SysFont(None, 50)
+    # small_font = pg.font.SysFont(None, 30)
 
     title_sprite, title_rect = button('AutoRacer', 70, font, 'lightsalmon')
     start_sprite, start_rect = button('Play!', 300, font, 'lightgreen')
@@ -94,12 +94,10 @@ async def main():
     
     color_list = [(c, v) for c, v in pg.color.THECOLORS.items() if 'light' in c and 'gray' not in c and 'grey' not in c]
     car_sheet = pg.image.load(PATH+'sprites/other_cars.png').convert_alpha()
-    for i in range(20):
-        color = random.choice(color_list) #random.sample(range(100, 255), 3)
-        elements.append(gen_car(color[1], car_sheet))
+    for i in range(len(color_list)):
+        elements.append(gen_car(color_list[i][1], car_sheet))
     
-    color = random.choice(color_list)
-    car = gen_car(color[1], car_sheet)
+    car = gen_car(random.choice(color_list)[1], car_sheet)
     car_size = car[0].get_size()
 
     max_lives = 3
@@ -136,9 +134,7 @@ async def main():
                 clicked = 1
                 initial_x = mouse_position[0]
                 if enable_sounds and status != 'playing': sounds['bumped'].play()
-            # if event.type == pg.FINGERMOTION:
-            #     print( 'what')
-            #     pass
+
             if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 50:
                 if mouse_position[0] - initial_x > 50:
                     lane_target = min(1, lane_target+1)
@@ -155,12 +151,12 @@ async def main():
                 if enable_sounds: sounds['engine'][streak].stop()
         
         screen.blit(background[int(animation_time)%4], (0,0))
-
+        
         for tree in trees: #[side, distance, lane, sprite]
             scale = min(1, abs(1/(tree[1]+10)))
             new_size = (400*scale, 400*scale)
-            tree_resized = pg.transform.scale(tree_sprites[tree[3]], new_size)
             tree_position = (180+tree[0]*(tree[2]*4-2.5)*10*scale-new_size[0]/2, 200+(420*scale-new_size[1]))
+            tree_resized = pg.transform.scale(tree_sprites[tree[3]], new_size)
             screen.blit(tree_resized, tree_position)
             tree[1] -= delta_time*speed*10
         
@@ -270,19 +266,22 @@ async def main():
                         elements_to_remove.append(element)
                     
                     elif car_collider.overlap(element_collider, (element_position[0] - car_position[0], element_position[1] - car_position[1])):
-                        # exploding_animation(elements[element[2]][-1], element_position[0], 500, animations, total_time) 
-                        exploding_animation(resized, element_position[0], 500, animations, total_time) 
+                        if fps < 40:
+                            exploding_animation(resized, element_position[0], 500, animations, total_time, [2,2])
+                        else:
+                            exploding_animation(resized, element_position[0], 500, animations, total_time) 
 
                         if element[2] < 3 or (element[2] == 3 and lives >= max_lives):
                             if enable_sounds: sounds['powerup'][element[2]].play()
                             points_added = (element[2]+1)*(streak+1)*10
                             total_points += points_added
                             points_sprite, points_rect = button(str(total_points), 130, font, 'greenyellow')
-
-                            for i in range((element[2]+1)*(streak+1)):
-                                x_position = 180 + random.randint(-40,40)
-                                y_position = 100 + random.randint(-40,40)
-                                animations.append([yellow_coin[random.randint(0,7)], x_position,  y_position, total_time+400])
+                           
+                            if fps > 40:
+                                for i in range((element[2]+1)*(streak+1)):
+                                    x_position = 180 + random.randint(-40,40)
+                                    y_position = 100 + random.randint(-40,40)
+                                    animations.append([yellow_coin[random.randint(0,7)], x_position,  y_position, total_time+400])
 
                             if element[2] == 2 and streak < 10:
                                 speed_target = speed_target*1.1
@@ -433,7 +432,8 @@ def button(text, center_y, font, color='white', center_x=180):
 def generic_button(button_sprite, button_rect, screen, mouse_position, clicked):
     selected = 0
     if button_rect.collidepoint(mouse_position):
-        pg.draw.rect(screen, pg.Color('gray'), button_rect)
+        pg.draw.rect(screen, pg.Color('skyblue4'), button_rect, border_radius=3)
+        pg.draw.rect(screen, pg.Color('aquamarine'), button_rect.inflate(20,20), width=7, border_radius=10)
         if clicked: selected = 1
     screen.blit(button_sprite, button_rect)
 
