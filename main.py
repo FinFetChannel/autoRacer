@@ -5,23 +5,33 @@ import os
 
 PATH = os.path.abspath('.')+'/'
 PLATFORM = 'windows'
+SCREEN_SIZE = [360, 640]
+SCREEN_FACTOR = 1
+
+pg.init()
+
 if 'ANDROID_ARGUMENT' in os.environ:
     PLATFORM = 'android'
+    os.environ['SDL_HINT_RENDER_SCALE_QUALITY'] = '1'
+    display_info = pg.display.Info()
+    if display_info.current_w == 1024 and display_info.current_h == 600: # special case for cheap tablets
+        SCREEN_FACTOR = 1024/SCREEN_SIZE[1]
+        SCREEN_SIZE = [int(SCREEN_SIZE[0]*SCREEN_FACTOR), int(SCREEN_SIZE[1]*SCREEN_FACTOR)]
+
 elif __import__("sys").platform == "emscripten":
     PLATFORM = 'web'
     from platform import window
 
 async def main():
-    pg.mixer.init()    
-    size = (360, 640)
+    pg.mixer.init()
     if PLATFORM == 'android':
-        screen = pg.display.set_mode(size, pg.SCALED)#|pg.RESIZABLE)
+        screen = pg.display.set_mode(SCREEN_SIZE, pg.SCALED)#|pg.FULLSCREEN)
     else:
-        screen = pg.display.set_mode(size)
+        screen = pg.display.set_mode(SCREEN_SIZE)
 
     background = []
     for i in range(4):
-        background.append(pg.image.load(PATH+'sprites/road'+str(i)+'.png').convert())
+        background.append(pg.transform.scale(pg.image.load(PATH+'sprites/road'+str(i)+'.png').convert(), SCREEN_SIZE))
 
     pause_button = pg.image.load(PATH+'sprites/pause.png').convert()
     pause_button.set_colorkey((255,255,255))
@@ -44,26 +54,23 @@ async def main():
     explosion = pg.image.load(PATH+'sprites/explosion.png').convert()
     explosion.set_colorkey((255,255,255))
 
-    black_frame = pg.Surface(size)
+    black_frame = pg.Surface(SCREEN_SIZE)
     black_frame.fill(pg.Color('black'))
     black_frame.set_alpha(50)
 
-    font = pg.font.SysFont(None, 100)
-    medium_font = pg.font.SysFont(None, 50)
-    # small_font = pg.font.SysFont(None, 30)
+    font = pg.font.SysFont(None, int(SCREEN_FACTOR*100))
+    medium_font = pg.font.SysFont(None, int(SCREEN_FACTOR*50))
 
-    title_sprite, title_rect = button('AutoRacer', 70, font, 'lightsalmon')
-    start_sprite, start_rect = button('Play!', 300, font, 'lightgreen')
-    resume_sprite, resume_rect = button('Resume', 300, font, 'lightgreen')
-    quit_sprite, quit_rect = button('Quit!', 380, medium_font, 'lightcoral')
-
+    title_sprite, title_rect = button('AutoRacer', 70*SCREEN_FACTOR, font, 'lightsalmon')
+    start_sprite, start_rect = button('Play!', 300*SCREEN_FACTOR, font, 'lightgreen')
+    resume_sprite, resume_rect = button('Resume', 300*SCREEN_FACTOR, font, 'lightgreen')
+    quit_sprite, quit_rect = button('Quit!', 380*SCREEN_FACTOR, medium_font, 'lightcoral')
 
     sounds = load_sounds()
     clock = pg.time.Clock()
-
-    mult_sprite, mult_rect = button('', 150, font, 'lightgreen')
-    points_sprite, points_rect = button('', 100, font, 'greenyellow')
-
+    
+    mult_sprite, mult_rect = button('', 150*SCREEN_FACTOR, font, 'lightgreen')
+    points_sprite, points_rect = button('', 100*SCREEN_FACTOR, font, 'greenyellow')
 
     tree_sprites = []
     trees = pg.image.load(PATH+'sprites/trees.png').convert()
@@ -92,7 +99,7 @@ async def main():
         heart.append(pg.Surface.subsurface(coins, (i*32, 128, 32, 32)))
     elements = [yellow_coin, blue_coin, red_coin, heart, bomb]
     
-    color_list = [(c, v) for c, v in pg.color.THECOLORS.items() if 'light' in c and 'gray' not in c and 'grey' not in c]
+    color_list = [(c, v) for c, v in pg.color.THECOLORS.items() if 'dark' not in c and 'gray' not in c and 'grey' not in c] #'light' in c and
     car_sheet = pg.image.load(PATH+'sprites/other_cars.png').convert_alpha()
     for i in range(len(color_list)):
         elements.append(gen_car(color_list[i][1], car_sheet))
@@ -127,7 +134,7 @@ async def main():
         delta_time = min(50, clock.tick(60))
         total_time += delta_time
         animation_time += speed*delta_time*10
-        fps = 1000/delta_time
+        fps = 1000/(delta_time+1e-16)
         for event in pg.event.get():
             if event.type == pg.QUIT: status = 'quitting'
             if event.type == pg.MOUSEBUTTONDOWN:
@@ -135,7 +142,7 @@ async def main():
                 initial_x = mouse_position[0]
                 if enable_sounds and status != 'playing': sounds['bumped'].play()
 
-            if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 50:
+            if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 10:
                 if mouse_position[0] - initial_x > 50:
                     lane_target = min(1, lane_target+1)
                 elif mouse_position[0] - initial_x < 50:
@@ -153,14 +160,15 @@ async def main():
         screen.blit(background[int(animation_time)%4], (0,0))
         
         for tree in trees: #[side, distance, lane, sprite]
-            scale = min(1, abs(1/(tree[1]+10)))
-            new_size = (400*scale, 400*scale)
-            tree_position = (180+tree[0]*(tree[2]*4-2.5)*10*scale-new_size[0]/2, 200+(420*scale-new_size[1]))
+            scale = min(1, abs(SCREEN_FACTOR/(tree[1]+10)))
+            new_size = (400*scale* SCREEN_FACTOR, 400*scale* SCREEN_FACTOR)
+            tree_position = ((180+tree[0]*(tree[2]*4-2.5)*10*scale)* SCREEN_FACTOR - new_size[0]/2 ,
+                             (200+420*scale)* SCREEN_FACTOR-new_size[1] )
             tree_resized = pg.transform.scale(tree_sprites[tree[3]], new_size)
             screen.blit(tree_resized, tree_position)
             tree[1] -= delta_time*speed*10
         
-        if tree_position[0] + new_size[0] < 0 or tree_position[0] > size[0] or tree[1] < -7:
+        if tree_position[0] + new_size[0] < 0 or tree_position[0] > SCREEN_SIZE[0] or tree[1] < -7:
             trees.remove(tree)
 
         if (fps > 55 and trees[0][1] < 100) or len(trees) < 5:
@@ -208,14 +216,14 @@ async def main():
         elif status == 'playing':    
             if pause_button_rect.collidepoint(mouse_position) and clicked:
                 status = 'pause'
-                sounds['engine'][streak].fadeout(100)
+                sounds['engine'][streak].stop()
             else:
-                # screen.blit(small_font.render(str(int(fps)), 1, pg.Color('black')), (335, 5))
+                
                 screen.blit(pause_button, pause_button_rect)
                 screen.blit(sound_button[enable_sounds], sound_button_rect)
                 screen.blit(music_button[enable_music], music_button_rect)
                 screen.blit(mult_sprite, mult_rect)
-
+                # screen.blit(medium_font.render(str(int(fps)), 1, pg.Color('black')), (0, 5))
                 if sound_button_rect.collidepoint(mouse_position) and clicked:
                     enable_sounds = not(enable_sounds)
                     if enable_sounds: 
@@ -229,7 +237,8 @@ async def main():
                     else: 
                         sounds['music'][0].fadeout(200) #pg.mixer.music.stop()
 
-            car_position = (180 + car_x*100 - car_size[0]/2, 520 + (total_time*0.01)%3)
+            car_position = ((180 + car_x*100) * SCREEN_FACTOR - car_size[0]/2,
+                            (520* SCREEN_FACTOR + (total_time*0.01)%3))
             screen.blit(car[int(car_x+1.5)], car_position)
 
             old_x = car_x
@@ -238,44 +247,46 @@ async def main():
             elif lane_target - car_x < -0.05: left = 1
             else: left = 0
 
-            car_x = max(-1, min( 1, car_x - left*delta_time*(0.003)))
+            car_x = max(-1, min( 1, car_x - left*delta_time*(speed*0.25+0.002)))
         
             if enable_sounds and car_x != old_x and total_time - sound_delay > 300:
                 sound_delay = total_time
                 sounds['tire'].play()
             
             
-            if speed < speed_target* (1+ total_points/20000) and total_time - error_delay > 250:
+            if speed < speed_target* (1+ total_points/40000) and total_time - error_delay > 250:
                 speed = speed + delta_time*1e-6
             elements_to_remove = []     
             for element in lane_elements: # lane, distance, type
-                scale = min(1, abs(1/element[1]))
-                new_size = (100*scale, 100*scale)
+                scale = min(2, abs(1/element[1]))
+                new_size = (100*scale*SCREEN_FACTOR, 100*scale*SCREEN_FACTOR)
                 if element[2] < 5:
                     resized = pg.transform.scale(elements[element[2]][int((total_time*0.01))%8], new_size)
                 else:
                     resized = pg.transform.scale(elements[element[2]][element[0]], new_size)
-                element_position = (180+(element[0]-1)*120*scale-new_size[0]/2, 200+(420*scale-new_size[1]/2))
+                element_position = ((180+(element[0]-1)*120*scale) * SCREEN_FACTOR-new_size[0]/2,
+                                    (200+(420*scale)) * SCREEN_FACTOR-new_size[1]/2)
                 screen.blit(resized, element_position)
                 element[1] -= delta_time*speed#*100
                 if element[1] < 9:
                     element_collider = pg.mask.from_surface(resized)
                     car_collider = pg.mask.from_surface(car[int(car_x+1.5)])
 
-                    if  element_position[1] > size[1] or element[1] < 1:
+                    if  element_position[1] > SCREEN_SIZE[1] or element[1] < 0.5:
                         elements_to_remove.append(element)
                     
                     elif car_collider.overlap(element_collider, (element_position[0] - car_position[0], element_position[1] - car_position[1])):
                         if fps < 40:
-                            exploding_animation(resized, element_position[0], 500, animations, total_time, [2,2])
+                            exploding_animation(resized, element_position[0], 500*SCREEN_FACTOR, animations, total_time, [2,2])
                         else:
-                            exploding_animation(resized, element_position[0], 500, animations, total_time) 
+                            exploding_animation(resized, element_position[0], 500*SCREEN_FACTOR, animations, total_time) 
 
                         if element[2] < 3 or (element[2] == 3 and lives >= max_lives):
+                            if enable_sounds: sounds['powerup'][element[2]].stop()
                             if enable_sounds: sounds['powerup'][element[2]].play()
                             points_added = (element[2]+1)*(streak+1)*10
                             total_points += points_added
-                            points_sprite, points_rect = button(str(total_points), 130, font, 'greenyellow')
+                            points_sprite, points_rect = button(str(total_points), 130*SCREEN_FACTOR, font, 'greenyellow')
                            
                             if fps > 40:
                                 for i in range((element[2]+1)*(streak+1)):
@@ -284,13 +295,13 @@ async def main():
                                     animations.append([yellow_coin[random.randint(0,7)], x_position,  y_position, total_time+400])
 
                             if element[2] == 2 and streak < 10:
-                                speed_target = speed_target*1.1
-                                sounds['engine'][streak].fadeout(100)
-                                sounds['music'][int(streak/2)].fadeout(100)
+                                speed_target = speed_target + 0.0001 #*1.1
+                                sounds['engine'][streak].stop()
+                                sounds['music'][streak].fadeout(200)
                                 streak += 1
                                 if enable_sounds: sounds['engine'][streak].play(-1)
-                                if enable_music: sounds['music'][int(streak/2)].play(-1)
-                                mult_sprite, mult_rect = button('x'+str(streak+1), 180, medium_font, 'lightgreen')
+                                if enable_music: sounds['music'][streak].play(-1)
+                                mult_sprite, mult_rect = button('x'+str(streak+1), 180*SCREEN_FACTOR, medium_font, 'lightgreen')
                                 animations.append([medium_font.render('x'+str(streak+1), 1, pg.Color('lightgreen')), element_position[0], element_position[1], total_time])
                         elif element[2] == 3:
                             if enable_sounds: sounds['powerup'][element[2]].play()
@@ -300,11 +311,11 @@ async def main():
                             lives -= 1
                             speed = 0
                             error_delay = total_time
-                            speed_target = 0.0025
+                            speed_target = 0.0025* (1+ total_points/20000)
                             if enable_sounds:
-                                sounds['engine'][streak].fadeout(50)
+                                sounds['engine'][streak].stop()
                                 sounds['bumped'].play()
-                            if enable_music: sounds['music'][int(streak/2)].fadeout(50)
+                            if enable_music: sounds['music'][streak].stop()
                             
                             if element[2] == 4 or streak == 10:
                                 lives -= 1
@@ -318,11 +329,11 @@ async def main():
                             add_explosions(3, animations, element_position, explosion, total_time)                            
                             
                             if lives < 1:
-                                exploding_animation(car[int(car_x+1.5)], car_position[0], 570, animations, total_time)
+                                exploding_animation(car[int(car_x+1.5)], car_position[0], 570*SCREEN_FACTOR, animations, total_time)
                                 sounds['engine'][0].stop()
                                 status = 'dying'
                                 speed = 0.0015
-                                points_sprite, points_rect = button('Total points: '+str(total_points), 120, medium_font, 'greenyellow')
+                                points_sprite, points_rect = button('Total points: '+str(total_points), 120*SCREEN_FACTOR, medium_font, 'greenyellow')
                                 max_animations = 10
                         elements_to_remove.append(element)
 
@@ -330,7 +341,7 @@ async def main():
                 lane_elements.remove(element)
 
             for i in range(lives):
-                screen.blit(heart[int((total_time*0.01))%8], (300-i*32, 8))
+                screen.blit(heart[int((total_time*0.01))%8], ((300-i*32)*SCREEN_FACTOR, 8))
 
             if len(lane_elements) < 20:
                 add_lane_element(lane_elements, elements, total_points, max_lives-lives)
@@ -358,6 +369,9 @@ async def main():
                     anim_frame = pg.transform.rotate(anim_frame, time_scale*animation[4])
                     animation[1] += animation[5][0]*delta_time
                     animation[2] += animation[5][1]*delta_time
+            elif len(animation) > 4:
+                animation[1] += animation[5][0]*delta_time
+                animation[2] += animation[5][1]*delta_time
             animation[1] += random.randint(-1,1)
             animation[2] -= delta_time*.1 + random.randint(-1,1)
             screen.blit(anim_frame, (animation[1], animation[2]))
@@ -380,15 +394,15 @@ def add_lane_element(lane_elements, elements, total_points=0, need_lives=1):
     else:
         element_type = random.choice([0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,3,4,5,5,5,5,5,5])
         if element_type == 3 and need_lives < 1:
-            element_type = 2
+            element_type = random.choice([0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2])
     if element_type == 5: 
         element_type = random.randint(5,len(elements) -1)
     
 
     lane_elements.insert(0,[lane, distance, element_type])
-    if element_type == 0:
-        for i in range(3):
-            lane_elements.insert(0,[lane, distance+i+1, 0])
+    if element_type < 2:
+        for i in range(3-element_type*2):
+            lane_elements.insert(0, [lane, distance+(i+1)*0.5, element_type])
 
 
 def add_tree(trees, tree_sprites):
@@ -403,17 +417,15 @@ def add_tree(trees, tree_sprites):
 def load_sounds():
     sounds = {'engine':[], 'powerup':[], 'music':[]}
     volume = 0.5
-    if PLATFORM == 'android':
-        volume = 0.3
     for i in range(11):
-        sounds['engine'].append(pg.mixer.Sound(PATH+'sounds/engine'+str(i)+'.ogg'))
-        sounds['engine'][-1].set_volume(volume*1.5)
+        sounds['engine'].append(pg.mixer.Sound(PATH+'sounds/Car_Engine_Loop'+str(i)+'.ogg'))
+        sounds['engine'][-1].set_volume(volume)
+        sounds['music'].append(pg.mixer.Sound(PATH+'sounds/music'+str(i)+'.ogg'))
+        sounds['music'][-1].set_volume(1)
     for i in range(4):
         sounds['powerup'].append(pg.mixer.Sound(PATH+'sounds/powerup'+str(i)+'.ogg'))
         sounds['powerup'][-1].set_volume(volume*0.5)
-    for i in range(6):
-        sounds['music'].append(pg.mixer.Sound(PATH+'sounds/music'+str(i)+'.ogg'))
-        sounds['music'][-1].set_volume(volume)
+        
 
     sound_strings = ['bumped', 'tire', 'finish', 'change']
     for string in sound_strings:
@@ -422,7 +434,7 @@ def load_sounds():
         
     return sounds
 
-def button(text, center_y, font, color='white', center_x=180):
+def button(text, center_y, font, color='white', center_x=SCREEN_SIZE[0]/2):
     button_sprite = font.render(text, 1, pg.Color(color))
     button_rect = button_sprite.get_rect()
     button_rect.center = (center_x, center_y)
@@ -467,12 +479,12 @@ def gen_car(color, car_sheet):
         car_background.blit(car_sheet, (0,0))
         car_background.set_colorkey((255,0,255))
         new_car = []
-        new_car.append(pg.Surface.subsurface(car_background, (0, 0, 80, 80)))
-        new_car.append(pg.Surface.subsurface(car_background, (80, 0, 80, 80)))
+        new_size = int(80*SCREEN_FACTOR), int(80*SCREEN_FACTOR)
+        new_car.append(pg.transform.scale(pg.Surface.subsurface(car_background, (0, 0, 80, 80)), new_size))
+        new_car.append(pg.transform.scale(pg.Surface.subsurface(car_background, (80, 0, 80, 80)), new_size))
         new_car.append(pg.transform.flip(new_car[0], flip_x=1, flip_y=0))
         
         return new_car
 
 if __name__ == '__main__':
-    pg.init()
     asyncio.run(main())

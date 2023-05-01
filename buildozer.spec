@@ -1,7 +1,7 @@
 [app]
 
 # (str) Title of your application
-title = FinFET AutoRacer
+title = AutoRacer
 
 # (str) Package name
 package.name = fautoracer
@@ -29,7 +29,7 @@ source.include_exts = py,png,jpg,kv,atlas,ogg,txt
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.2
+version = 0.3
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -37,7 +37,7 @@ version = 0.2
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,pygame,jnius,sdl2,sdl2_image,sdl2_mixer,sdl2_ttf,png,jpeg
+requirements = python3,pygame-ce,jnius,sdl2,sdl2_image,sdl2_mixer,sdl2_ttf,png,jpeg
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
