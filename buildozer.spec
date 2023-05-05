@@ -29,7 +29,7 @@ source.include_exts = py,png,jpg,kv,atlas,ogg,txt
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.3
+version = 0.3.3
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -44,10 +44,10 @@ requirements = python3,pygame-ce,jnius,sdl2,sdl2_image,sdl2_mixer,sdl2_ttf,png,j
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = splash.jpg
+presplash.filename = ./sprites/finfetsmall.png
 
 # (str) Icon of the application
-icon.filename = icon.png
+icon.filename = ./sprites/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse

@@ -121,6 +121,7 @@ async def main():
     car_x = 0
     animations = []
     lives = 0
+    fingerdown = 0
 
     lane_target = 0
 
@@ -139,15 +140,19 @@ async def main():
             if event.type == pg.QUIT: status = 'quitting'
             if event.type == pg.MOUSEBUTTONDOWN:
                 clicked = 1
+                fingerdown = 1
                 initial_x = mouse_position[0]
                 if enable_sounds and status != 'playing': sounds['bumped'].play()
 
-            if event.type == pg.MOUSEBUTTONUP and abs(mouse_position[0] - initial_x) > 10:
-                if mouse_position[0] - initial_x > 50:
+            elif fingerdown and abs(mouse_position[0] - initial_x) > 20:
+                fingerdown = 0
+                if mouse_position[0] > initial_x:
                     lane_target = min(1, lane_target+1)
-                elif mouse_position[0] - initial_x < 50:
+                elif mouse_position[0] < initial_x:
                     lane_target = max(-1, lane_target-1)
-
+            elif event.type == pg.MOUSEBUTTONUP:
+                fingerdown = 0
+                
             if event.type == pg.KEYDOWN:
                 if event.key == ord('a') or event.key == pg.K_LEFT:
                     lane_target = max(-1, lane_target-1)
@@ -416,7 +421,7 @@ def add_tree(trees, tree_sprites):
 
 def load_sounds():
     sounds = {'engine':[], 'powerup':[], 'music':[]}
-    volume = 0.5
+    volume = 0.4
     for i in range(11):
         sounds['engine'].append(pg.mixer.Sound(PATH+'sounds/Car_Engine_Loop'+str(i)+'.ogg'))
         sounds['engine'][-1].set_volume(volume)
@@ -424,7 +429,7 @@ def load_sounds():
         sounds['music'][-1].set_volume(1)
     for i in range(4):
         sounds['powerup'].append(pg.mixer.Sound(PATH+'sounds/powerup'+str(i)+'.ogg'))
-        sounds['powerup'][-1].set_volume(volume*0.5)
+        sounds['powerup'][-1].set_volume(volume*0.3)
         
 
     sound_strings = ['bumped', 'tire', 'finish', 'change']
